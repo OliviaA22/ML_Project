@@ -24,7 +24,7 @@ processed_count = 0
 skipped_count = 0
 
 # Get list of all files in directory
-files = os.listdir(image_dir)
+files = sorted(os.listdir(image_dir))
 
 # Load all images
 for file in files:
@@ -44,7 +44,6 @@ for file in files:
                             
             # Resize if dimensions don't match expected size
             if img.size != (w, h):
-                skipped_count += 1
                 img = img.resize((w, h))
 
             # Convert to numpy array
@@ -93,5 +92,6 @@ print(f"Saving to {output_file}...")
 
 
 np.savez(output_file, images=X, labels=y)
+
 
 

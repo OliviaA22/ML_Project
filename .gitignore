@@ -1,3 +1,7 @@
 data1.zip
 fashion_mnist
 project1.pdf
+*.npz
+*.zip
+__pycache__/
+*.keras
