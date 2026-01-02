@@ -25,19 +25,33 @@ for file_name in files:
         label = int(file_name.split("-")[0])
 
         img = Image.open(file_path)
+        
+        #  Convert color mode based on 'c'
+        if c == 1:
+            img = img.convert('L')
+        elif c == 3:
+            img = img.convert('RGB')
+
         img = img.resize((w, h))
         img_array = np.asarray(img)
+
+        # --- PROBLEM 1: Remove White Lines ---
         if mode == '1':
             white_rows = np.all(img_array == 255, axis=1)
             img_array = img_array[~white_rows]
             rows_missing = h - img_array.shape[0]
-            padding = np.zeros((rows_missing, w), dtype=img_array.dtype)
+            if c == 1:
+                padding = np.zeros((rows_missing, w), dtype=img_array.dtype)
+            else:
+                padding = np.zeros((rows_missing, w, c), dtype=img_array.dtype)
             img_array = np.vstack([img_array, padding])
 
-        img_array = img_array / 255
+        if c == 1 and img_array.ndim == 2:
+            img_array = np.expand_dims(img_array, axis=-1)
 
         images.append(img_array)
         labels.append(label)
+
     except Exception as e:
         print(f"Skipping file {file_name}: {e}")
         continue
@@ -45,7 +59,7 @@ for file_name in files:
 images = np.array(images, dtype=np.float32)
 labels = np.array(labels, dtype=np.int32)
 
- # Problem 2:
+ # Problem 2: Balance Classes
 if mode == '1':
     unique_labels, counts = np.unique(labels, return_counts=True)
     max_count = counts.max()
@@ -66,6 +80,5 @@ if mode == '1':
     labels = np.concatenate(new_labels)
 
 np.savez(output_file, images=images, labels=labels)
-
-print("Saved cleaned dataset to:", output_file)
-print("Final image shape:", images.shape)
+print(f"Saved to {output_file}")
+print(f"Final Shape: {images.shape}")
