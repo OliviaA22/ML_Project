@@ -1,92 +1,114 @@
-import os
 import sys
 import numpy as np
 import matplotlib.pyplot as plt
-from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
+from tensorflow.keras.models import Sequential, load_model
+from tensorflow.keras.layers import Dense, Flatten, Conv2D, MaxPooling2D, Input
 from sklearn.model_selection import train_test_split
-import tensorflow as tf
-from tensorflow.keras import layers, models
+from sklearn.metrics import confusion_matrix
 
 
-dataset_file = sys.argv[1]
-mode = sys.argv[2]
+npz_file = sys.argv[1]
+mode = sys.argv[2]  # 'train' or 'test'
 
-if mode not in ['train', 'test']:
-    print("Mode must be 'train' or 'test'")
-    sys.exit(1)
+data = np.load(npz_file)
+X = data["images"]
+y = data["labels"]
 
-print(f"Loading data from: {dataset_file}")
+data = np.load(npz_file)
+X = data["images"]
+y = data["labels"]
 
-# Load data from .npz file
-data = np.load(dataset_file)
-X = data['images']
-y = data['labels']
+X = X.astype("float32") / 255.0
 
-# print(f"Data loaded: X shape = {X.shape}, y shape = {y.shape}")
-# print(f"Number of classes: {len(np.unique(y))}")
+num_classes = len(np.unique(y))
+input_shape = X.shape[1:]
 
-# calling the stratify method to ensures we keep the same ratio of t-shirts/shoes in train and test.
 X_train, X_test, y_train, y_test = train_test_split(
     X, y, test_size=0.2, random_state=42, stratify=y
 )
 
-
-input_shape = X_train.shape[1:] # (incase we decide to change the shape passed to the sys.argv[])
-label_classes = len(np.unique(y))  
-
-# print(f"Number of classes: {label_classes}")
-print(f"Train set: {X_train.shape[0]} samples")
-print(f"Test set: {X_test.shape[0]} samples")
-
-# NOTE ---------------------------- Start  working from the code below ---------------------------- #
-
-# --- 5. Main Logic Flow ---
-MODEL_PATH = "my_model.keras" # [cite: 36, 41]
-
-if mode == 'train':
-    # Define Model
-    model = models.Sequential([
-        layers.Conv2D(32, (3, 3), activation='relu', input_shape=input_shape),
-        layers.MaxPooling2D((2, 2)),
-        layers.Conv2D(64, (3, 3), activation='relu'),
-        layers.MaxPooling2D((2, 2)),
-        layers.Flatten(),
-        layers.Dense(64, activation='relu'),
-        layers.Dense(label_classes, activation='softmax')
+def build_dnn(input_shape, num_classes):
+    model = Sequential([
+        Input(shape=input_shape),
+        Flatten(),
+        Dense(128, activation="relu"),
+        Dense(64, activation="relu"),
+        Dense(num_classes, activation="softmax")
     ])
+    model.compile(
+        optimizer="adam", 
+        loss="sparse_categorical_crossentropy", 
+        metrics=["accuracy"])
+    return model
 
-    model.compile(optimizer='adam',
-                  loss='sparse_categorical_crossentropy',
-                  metrics=['accuracy'])
+def build_cnn(input_shape, num_classes):
+    model = Sequential([
+        Input(shape=input_shape),
+        Conv2D(6, kernel_size=5, activation="relu"),
+        MaxPooling2D(),
+        Conv2D(16, kernel_size=5, activation="relu"),
+        MaxPooling2D(),
+        Flatten(),
+        Dense(120, activation="relu"),
+        Dense(84, activation="relu"),
+        Dense(num_classes, activation="softmax")
+    ])
+    model.compile(
+        optimizer="adam", 
+        loss="sparse_categorical_crossentropy", 
+        metrics=["accuracy"])
+    return model
 
-    # Train
-    print("Starting training...")
-    history = model.fit(X_train, y_train, epochs=10, validation_data=(X_test, y_test))
-    
-    # Save
-    model.save(MODEL_PATH)
-    print(f"Model saved to {MODEL_PATH}")
 
-elif mode == 'test':
-    if not os.path.exists(MODEL_PATH):
-        print("Model not found. Train first!")
-        sys.exit(1)
 
-    print("Loading model...")
-    model = models.load_model(MODEL_PATH)
+
+if mode == "train":
+    print(f"Training model on {len(X_train)} samples")
     
-    # Evaluate
-    loss, acc = model.evaluate(X_test, y_test)
-    print(f"Test Accuracy: {acc*100:.2f}%")
+    dnn = build_dnn(input_shape, num_classes)
+    dnn.fit(X_train, y_train, epochs=5,  batch_size=64, validation_split=0.1)
+    dnn.save("dnn_model.keras") 
+    # dnn.save_weights("dnn.weights.h5")
+
+    cnn = build_cnn(input_shape, num_classes)
+    cnn.fit(X_train, y_train, epochs=5, batch_size=64, validation_split=0.1)
+    cnn.save("cnn_model.keras")
+    # cnn.save_weights("cnn.weights.h5")
+
+else:
+    print("Loading models...")
+    dnn = load_model("dnn_model.keras")
+    # dnn.load_weights("dnn.weights.h5")
+    cnn = load_model("cnn_model.keras")
+    # cnn.load_weights("cnn.weights.h5")
+
+    loss_dnn, acc_dnn = dnn.evaluate(X_test, y_test, verbose=0)
+    print(f"DNN Test Accuracy: {acc_dnn:.4f}")
     
-    # Visualizing the Confusion Matrix is a requirement [cite: 41]
-    # Predict
-    y_pred = model.predict(X_test)
-    y_pred_classes = np.argmax(y_pred, axis=1)
+    pred_dnn = dnn.predict(X_test)
+    cm_dnn = confusion_matrix(y_test, np.argmax(pred_dnn, axis=1))
+
+
+    loss_cnn, acc_cnn = cnn.evaluate(X_test, y_test, verbose=0)
+    print(f"CNN Test Accuracy: {acc_cnn:.4f}")
     
-    # Plot Confusion Matrix
-    cm = confusion_matrix(y_test, y_pred_classes)
-    disp = ConfusionMatrixDisplay(confusion_matrix=cm)
-    disp.plot(cmap='Blues')
-    plt.title("Confusion Matrix")
+    pred_cnn = cnn.predict(X_test)
+    cm_cnn = confusion_matrix(y_test, np.argmax(pred_cnn, axis=1))
+
+    fig, ax = plt.subplots(1, 2, figsize=(12, 5))
+
+    im1 = ax[0].imshow(cm_dnn, cmap='Blues')
+    ax[0].set_title(f"DNN Model (Acc: {acc_dnn:.2%})")
+    ax[0].set_xlabel('Predicted Label')
+    ax[0].set_ylabel('True Label')
+    fig.colorbar(im1, ax=ax[0], fraction=0.046, pad=0.04)
+
+
+    im2 = ax[1].imshow(cm_cnn, cmap='Blues')
+    ax[1].set_title(f"CNN Model (Acc: {acc_cnn:.2%})")
+    ax[1].set_xlabel('Predicted Label')
+    ax[1].set_ylabel('True Label')
+    fig.colorbar(im2, ax=ax[1], fraction=0.046, pad=0.04)
+
+    plt.tight_layout()
     plt.show()
