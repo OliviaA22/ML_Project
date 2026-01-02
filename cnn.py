@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 from tensorflow.keras.models import Sequential, load_model
 from tensorflow.keras.layers import Dense, Flatten, Conv2D, MaxPooling2D, Input
 from sklearn.model_selection import train_test_split
-from sklearn.metrics import confusion_matrix
+from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
 
 
 npz_file = sys.argv[1]
@@ -95,20 +95,16 @@ else:
     pred_cnn = cnn.predict(X_test)
     cm_cnn = confusion_matrix(y_test, np.argmax(pred_cnn, axis=1))
 
-    fig, ax = plt.subplots(1, 2, figsize=(12, 5))
-
-    im1 = ax[0].imshow(cm_dnn, cmap='Blues')
+    fig, ax = plt.subplots(1, 2, figsize=(16, 6))
+    disp_dnn = ConfusionMatrixDisplay(confusion_matrix=cm_dnn, display_labels=None)
+    disp_dnn.plot(ax=ax[0], cmap='Blues', values_format='d')
     ax[0].set_title(f"DNN Model (Acc: {acc_dnn:.2%})")
-    ax[0].set_xlabel('Predicted Label')
-    ax[0].set_ylabel('True Label')
-    fig.colorbar(im1, ax=ax[0], fraction=0.046, pad=0.04)
 
 
-    im2 = ax[1].imshow(cm_cnn, cmap='Blues')
+    disp_cnn = ConfusionMatrixDisplay(confusion_matrix=cm_cnn, display_labels=None)
+    disp_cnn.plot(ax=ax[1], cmap='Blues', values_format='d')
     ax[1].set_title(f"CNN Model (Acc: {acc_cnn:.2%})")
-    ax[1].set_xlabel('Predicted Label')
-    ax[1].set_ylabel('True Label')
-    fig.colorbar(im2, ax=ax[1], fraction=0.046, pad=0.04)
+
 
     plt.tight_layout()
     plt.show()
