@@ -15,7 +15,6 @@ X = []
 T = []
 skipped_images = []
 files = os.listdir(image_dir)
-
 print("=" * 60)
 print(f"Processing images from: {image_dir}")
 print(f"Target shape: {H}x{W} with {C} channel(s)")
@@ -27,14 +26,14 @@ for fname in files:
 
     path = os.path.join(image_dir, fname)
 
-    # ---------- Extract label from filename ----------
+    # Extract label from filename
     try:
         label = int(fname.split("-")[0])
     except:
         skipped_images.append((fname, "invalid_label"))
         continue
 
-    # ---------- Load image safely ----------
+    # Load image safely
     try:
         img = Image.open(path)
     except:
@@ -42,19 +41,19 @@ for fname in files:
         continue
 
     try:
-        # ---------- Convert to required channels ----------
+        # Convert to required channels
         if C == 1:
             img = img.convert("L")
         elif C == 3:
             img = img.convert("RGB")
 
-        # ---------- Resize ----------
+        # Resize
         img = img.resize((W, H))
 
-        # ---------- Convert to NumPy ----------
+        # Convert to NumPy
         img_array = np.asarray(img, dtype=np.float32)
 
-        # ---------- Check for blank/corrupted images (mostly black or white) ----------
+        # Check for blank/corrupted images (mostly black or white)
         if correct_data == 1:
             img_mean = np.mean(img_array)
             img_std = np.std(img_array)
@@ -69,14 +68,14 @@ for fname in files:
                 skipped_images.append((fname, "extreme_values"))
                 continue
 
-        # ---------- Normalize ----------
+        # Normalize
         img_array /= 255.0
 
-        # ---------- Ensure correct shape ----------
+        # Ensure correct shape
         if C == 1:
             img_array = img_array.reshape(H, W, 1)
 
-        # ---------- Skip invalid images ----------
+        # Skip invalid images
         if img_array.shape != (H, W, C):
             skipped_images.append((fname, "wrong_shape"))
             if correct_data == 1:

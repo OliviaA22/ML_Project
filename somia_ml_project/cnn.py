@@ -20,9 +20,7 @@ num_classes = len(np.unique(T))
 input_shape = X.shape[1:]
 
 
-# --------------------------------------------------
 # DNN Model
-# --------------------------------------------------
 def build_dnn():
     model = Sequential(
         [
@@ -42,9 +40,7 @@ def build_dnn():
     return model
 
 
-# --------------------------------------------------
 # CNN Model (LeNet-5 inspired)
-# --------------------------------------------------
 def build_cnn():
     model = Sequential(
         [
@@ -76,9 +72,7 @@ def build_cnn():
     return model
 
 
-# --------------------------------------------------
 # TRAIN MODE
-# --------------------------------------------------
 if mode == "train":
     # Fix class imbalance by oversampling minority class (class 5)
     print("\n" + "=" * 50)
@@ -195,9 +189,7 @@ if mode == "train":
     print("Training complete! Models saved.")
     print("=" * 50)
 
-# --------------------------------------------------
 # TEST MODE (CLEAN DATA ONLY)
-# --------------------------------------------------
 else:
     from tensorflow.keras.models import load_model
 
